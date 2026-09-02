@@ -5,7 +5,9 @@ import {
   BadgeCheck,
   BarChart3,
   BellRing,
+  Bot,
   Boxes,
+  BrainCircuit,
   Building2,
   Check,
   ChevronDown,
@@ -15,9 +17,14 @@ import {
   Database,
   ExternalLink,
   Fingerprint,
+  FileSearch,
+  Gauge,
   Gift,
+  GitCompareArrows,
   LayoutDashboard,
   Link2,
+  LoaderCircle,
+  LockKeyhole,
   Menu,
   MessageSquareText,
   PackageCheck,
@@ -37,6 +44,7 @@ import {
   UserRound,
   UsersRound,
   WalletCards,
+  Zap,
   X,
 } from 'lucide-react'
 import {
@@ -52,7 +60,7 @@ import {
   YAxis,
 } from 'recharts'
 
-type NavKey = 'overview' | 'capture' | 'customer' | 'campaign' | 'quality'
+type NavKey = 'overview' | 'ai' | 'capture' | 'customer' | 'campaign' | 'quality'
 type Product = { id: string; name: string; category: string; color: string; price: number; code: string }
 
 const products: Product[] = [
@@ -64,6 +72,7 @@ const products: Product[] = [
 
 const navItems: { key: NavKey; label: string; icon: typeof LayoutDashboard }[] = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { key: 'ai', label: 'AI Decision Lab', icon: BrainCircuit },
   { key: 'capture', label: 'Store Capture', icon: ScanBarcode },
   { key: 'customer', label: 'Customer 360', icon: UserRound },
   { key: 'campaign', label: 'Campaign Opportunity', icon: Target },
@@ -92,6 +101,66 @@ const opportunities = [
   { title: '태그 후 미구매 리타겟팅', audience: '18,420', lift: '+12.8%', channel: '앱푸시 · 카카오', desc: '상품 태그는 있었지만 24시간 내 구매가 없는 고객', tone: 'red' },
   { title: '오프라인 신규 → 온라인 전환', audience: '9,850', lift: '+9.4%', channel: '앱푸시 · 이메일', desc: '최근 30일 첫 매장 구매 후 온라인 행동이 없는 고객', tone: 'blue' },
   { title: '데님 구매자 크로스셀', audience: '7,310', lift: '+7.1%', channel: 'AI 개인화 추천', desc: '데님 구매 후 14일 내 상의 탐색 신호가 있는 고객', tone: 'violet' },
+]
+
+const aiScenarios = [
+  {
+    id: 'identity',
+    label: '매장 식별률 원인',
+    query: '최근 7일 회원 식별률이 가장 낮은 매장과 원인을 분석하고, 다음 행동을 제안해줘.',
+    openai: {
+      confidence: 92,
+      finding: '부산점 식별률은 43.0%로 전사 평균 61.3%보다 18.3%p 낮습니다. 18시 이후 회원 QR 스캔 누락률이 주간 대비 31% 높습니다.',
+      action: '저녁 근무조에 QR 스캔 안내를 강화하고 비회원 영수증의 모바일 회원증 전환을 A/B 테스트합니다.',
+    },
+    gemini: {
+      confidence: 88,
+      finding: '부산점 저녁 시간대 이상은 확인되지만 직원 운영 문제로 단정하기 어렵습니다. 같은 시간 POS 영수증 매칭 지연이 평균 2.1시간 발생했습니다.',
+      action: 'QR 운영 개선과 함께 POS 배치 지연을 분리 측정해야 원인 오판을 막을 수 있습니다.',
+    },
+    consensus: '부산점 2주 파일럿: 근무조별 QR 스캔율과 POS 매칭 지연을 동시에 측정하고, 비회원 영수증에 가입 인센티브를 노출합니다.',
+    audience: '부산점 최근 30일 비식별 구매 11,840건',
+    agreement: '부산점과 저녁 시간대가 우선 개선 대상이라는 점에 합의',
+    disagreement: '주원인이 매장 운영인지 POS 지연인지 추가 검증 필요',
+  },
+  {
+    id: 'tag',
+    label: '태그 후 미구매',
+    query: '상품 태그 후 구매하지 않은 고객 중 지금 캠페인으로 전환 가능성이 높은 대상을 찾아줘.',
+    openai: {
+      confidence: 90,
+      finding: '최근 7일 태그 후 미구매는 8,620명이며 쿨에어 크루넥 티가 2,140명으로 가장 큽니다. 24시간 내 재방문 고객의 전환 가능성이 높습니다.',
+      action: '24시간 내 앱푸시와 카카오 메시지로 조회 상품 기반 리타겟팅을 권장합니다.',
+    },
+    gemini: {
+      confidence: 94,
+      finding: '재고 부족·최근 반품·수신 미동의 고객을 제외하면 실제 실행 가능 대상은 6,480명입니다. 전체 8,620명 발송은 과대 타기팅입니다.',
+      action: '재고 보유 매장 반경과 동의 상태를 적용한 6,480명으로 대상을 축소해야 합니다.',
+    },
+    consensus: '실행 가능 고객 6,480명을 대상으로 할인 없는 코디 콘텐츠와 10% 쿠폰을 50:50 테스트합니다.',
+    audience: '동의·재고·빈도 제한 통과 6,480명',
+    agreement: '쿨에어 상품군과 24시간 이내 재접촉이 최우선이라는 점에 합의',
+    disagreement: '원시 대상 8,620명과 실행 가능 대상 6,480명의 정의 차이',
+  },
+  {
+    id: 'omni',
+    label: '오프라인→온라인',
+    query: '첫 오프라인 구매 후 온라인 구매로 전환할 가능성이 높은 고객군과 최적 액션을 알려줘.',
+    openai: {
+      confidence: 87,
+      finding: '최근 30일 첫 오프라인 구매 고객 9,850명이 온라인 미구매 상태입니다. 구매 후 3일 이내 앱 방문군의 예상 전환율은 18.6%입니다.',
+      action: '첫 구매 48시간 후 온라인 전용 코디 추천과 무료배송 혜택을 제안합니다.',
+    },
+    gemini: {
+      confidence: 91,
+      finding: '9,850명 중 마케팅 동의, 앱 설치, 최근 온라인 휴면 기준을 모두 충족하는 고객은 7,940명입니다. 무료배송은 고가치군에 한정해야 합니다.',
+      action: '예측 LTV 상위 30%에는 무료배송, 나머지에는 개인화 콘텐츠만 제안합니다.',
+    },
+    consensus: '실행 가능 7,940명을 LTV로 분기해 혜택 비용을 통제하고 10% 대조군으로 증분 매출을 측정합니다.',
+    audience: '온라인 미구매·수신 동의 고객 7,940명',
+    agreement: '구매 후 48시간과 앱 방문 신호가 핵심 전환 시점이라는 점에 합의',
+    disagreement: '무료배송 혜택의 전체 적용 여부는 비용 실험 필요',
+  },
 ]
 
 const currency = (value: number) => new Intl.NumberFormat('ko-KR').format(value)
@@ -183,6 +252,7 @@ function App() {
 
         <div className="page-wrap">
           {active === 'overview' && <Overview purchaseComplete={purchaseComplete} onNavigate={navigate} agentAnswer={agentAnswer} setAgentAnswer={setAgentAnswer} />}
+          {active === 'ai' && <AIDecisionLab purchaseComplete={purchaseComplete} />}
           {active === 'capture' && (
             <StoreCapture
               memberScanned={memberScanned}
@@ -320,6 +390,132 @@ function Overview({ purchaseComplete, onNavigate, agentAnswer, setAgentAnswer }:
       </section>
     </>
   )
+}
+
+function AIDecisionLab({ purchaseComplete }: { purchaseComplete: boolean }) {
+  const [scenarioIndex, setScenarioIndex] = useState(0)
+  const [runState, setRunState] = useState<'idle' | 'running' | 'done'>('idle')
+  const [approved, setApproved] = useState(false)
+  const scenario = aiScenarios[scenarioIndex]
+
+  const chooseScenario = (index: number) => {
+    setScenarioIndex(index)
+    setRunState('idle')
+    setApproved(false)
+  }
+
+  const runAnalysis = () => {
+    setRunState('running')
+    setApproved(false)
+    window.setTimeout(() => setRunState('done'), 1700)
+  }
+
+  return (
+    <>
+      <PageTitle
+        eyebrow="Governed Multi-model Intelligence"
+        title="두 모델이 독립적으로 보고, 합의된 근거만 실행으로"
+        description="AIRIS의 가상 오프라인 데이터를 OpenAI Analyst와 Gemini Challenger가 각각 분석합니다. Consensus Gate가 수치·근거·권고를 비교하고, 사람 승인 이후에만 AIQUA 캠페인 초안으로 전달합니다."
+        action={<span className="simulation-badge"><BrainCircuit size={16} /> SIMULATED DUAL-MODEL</span>}
+      />
+
+      <div className="ai-scope-banner">
+        <CircleAlert size={19} />
+        <div><strong>현재 화면은 가상 데이터와 사전 정의된 AI 응답을 사용하는 개념 데모입니다.</strong><span>운영 전환 시 OpenAI·Gemini API 키는 서버에 보관하고, AIRIS에서 조회한 승인된 데이터만 모델에 전달합니다.</span></div>
+      </div>
+
+      <section className="ai-top-grid">
+        <div className="panel ai-query-panel">
+          <div className="panel-head"><div><span className="panel-kicker">BUSINESS QUESTION</span><h2>분석할 질문을 선택하세요</h2></div><span className="data-ready"><i /> Synthetic data ready</span></div>
+          <div className="scenario-tabs">
+            {aiScenarios.map((item, index) => <button key={item.id} className={scenarioIndex === index ? 'active' : ''} onClick={() => chooseScenario(index)}>{item.label}</button>)}
+          </div>
+          <div className="query-box"><MessageSquareText size={20} /><p>{scenario.query}</p><button><Search size={15} /></button></div>
+          <div className="query-controls">
+            <div><span>분석 범위</span><strong>최근 7–30일 · 전체 매장</strong></div>
+            <div><span>개인정보 정책</span><strong><LockKeyhole size={13} /> PII Masked</strong></div>
+            <button className="run-analysis" onClick={runAnalysis} disabled={runState === 'running'}>
+              {runState === 'running' ? <><LoaderCircle className="spin" size={17} /> 두 모델 분석 중</> : <><Zap size={17} /> 이중 모델 분석 실행</>}
+            </button>
+          </div>
+        </div>
+
+        <aside className="panel data-foundation">
+          <div className="panel-head"><div><span className="panel-kicker">SYNTHETIC DATA FOUNDATION</span><h2>이번 분석의 근거 데이터</h2></div><Database size={19} /></div>
+          <div className="data-source-list">
+            <div><span className="source-icon red"><ReceiptText size={16} /></span><p><strong>오프라인 거래</strong><small>영수증 · SKU · 금액 · 매장</small></p><em>{purchaseComplete ? '182,431' : '182,430'}</em></div>
+            <div><span className="source-icon blue"><Fingerprint size={16} /></span><p><strong>통합 고객</strong><small>익명 Customer Key · 동의</small></p><em>96,840</em></div>
+            <div><span className="source-icon violet"><Activity size={16} /></span><p><strong>행동 이벤트</strong><small>태그 · 앱 조회 · 메시지 반응</small></p><em>1.84M</em></div>
+            <div><span className="source-icon green"><Gift size={16} /></span><p><strong>포인트 원장</strong><small>적립 · 사용 · 취소 · 반품</small></p><em>{purchaseComplete ? '117,921' : '117,920'}</em></div>
+          </div>
+          <div className="freshness-row"><Clock3 size={14} /><span>실시간 이벤트 + T+1 POS 대사</span><strong>품질 98.7%</strong></div>
+        </aside>
+      </section>
+
+      {runState === 'idle' && <ModelArchitecture />}
+      {runState === 'running' && <ModelRunning />}
+      {runState === 'done' && (
+        <>
+          <section className="model-compare-grid">
+            <ModelResult name="OpenAI Analyst" role="Primary reasoner" tone="openai" confidence={scenario.openai.confidence} finding={scenario.openai.finding} action={scenario.openai.action} />
+            <ModelResult name="Gemini Challenger" role="Independent verifier" tone="gemini" confidence={scenario.gemini.confidence} finding={scenario.gemini.finding} action={scenario.gemini.action} />
+          </section>
+
+          <section className="panel consensus-panel">
+            <div className="consensus-head"><div className="consensus-symbol"><GitCompareArrows size={22} /></div><div><span className="panel-kicker">CONSENSUS GATE · PASSED WITH CONDITION</span><h2>두 모델의 합의와 차이를 분리했습니다</h2></div><span className="consensus-score"><Gauge size={15} /> 종합 신뢰도 {Math.round((scenario.openai.confidence + scenario.gemini.confidence) / 2)}%</span></div>
+            <div className="consensus-columns">
+              <div className="agreement-box"><span><CircleCheck size={15} /> AGREEMENT</span><p>{scenario.agreement}</p></div>
+              <div className="disagreement-box"><span><CircleAlert size={15} /> NEEDS VALIDATION</span><p>{scenario.disagreement}</p></div>
+            </div>
+            <div className="final-recommendation"><div><Sparkles size={19} /></div><div><span>최종 권고안</span><strong>{scenario.consensus}</strong><small>실행 대상 · {scenario.audience}</small></div></div>
+            <div className="approval-bar">
+              <div><ShieldCheck size={18} /><p><strong>Human-in-the-loop</strong><span>AI는 분석과 캠페인 초안만 생성하며 실제 발송은 승인 전 실행되지 않습니다.</span></p></div>
+              <button className={approved ? 'approved' : ''} onClick={() => setApproved(true)}>{approved ? <><Check size={16} /> 캠페인 초안 승인됨</> : <>캠페인 초안 승인 <ArrowRight size={16} /></>}</button>
+            </div>
+          </section>
+          {approved && <div className="success-strip ai-success"><CircleCheck size={20} /><div><strong>AIQUA 캠페인 초안 큐에 추가되었습니다.</strong><span>개념 데모이므로 실제 고객 메시지는 발송되지 않습니다. 대상·가드레일·대조군을 검토한 뒤 운영자가 최종 발송합니다.</span></div></div>}
+        </>
+      )}
+
+      <section className="ai-bottom-grid">
+        <div className="panel data-preview-panel">
+          <div className="panel-head"><div><span className="panel-kicker">EVIDENCE PREVIEW</span><h2>모델이 참조한 가상 데이터</h2></div><button className="filter-pill"><FileSearch size={13} /> 근거 6개</button></div>
+          <div className="evidence-table">
+            <div className="evidence-head"><span>Store</span><span>Transactions</span><span>Identified</span><span>Tag→Buy</span><span>Quality</span></div>
+            {[
+              ['강남점', '18,324', '72.0%', '78.4%', '99.4%'],
+              ['홍대점', '15,640', '64.0%', '74.1%', '99.1%'],
+              ['명동점', '19,420', '59.0%', '70.8%', '96.9%'],
+              ['잠실점', '14,102', '55.0%', '68.7%', '98.8%'],
+              ['부산점', '12,680', '43.0%', '62.4%', '97.8%'],
+            ].map((row, index) => <div className={`evidence-row ${index === 4 ? 'alert' : ''}`} key={row[0]}>{row.map((cell) => <span key={cell}>{cell}</span>)}</div>)}
+          </div>
+        </div>
+        <aside className="panel governance-panel">
+          <span className="panel-kicker">MODEL GOVERNANCE</span><h2>운영 전환 시 적용 규칙</h2>
+          <ul>
+            <li><ShieldCheck size={15} /><div><strong>Grounded response</strong><span>AIRIS 조회 결과에 없는 수치는 답변 금지</span></div></li>
+            <li><GitCompareArrows size={15} /><div><strong>Independent inference</strong><span>두 모델은 서로의 답을 보지 않고 분석</span></div></li>
+            <li><CircleAlert size={15} /><div><strong>Disagreement routing</strong><span>수치 불일치 또는 신뢰도 80% 미만은 검토</span></div></li>
+            <li><LockKeyhole size={15} /><div><strong>Privacy boundary</strong><span>개인정보 제거 후 집계·익명 데이터만 전달</span></div></li>
+          </ul>
+          <div className="audit-log"><span>Audit log</span><code>run_0902_1438 · prompt_v3 · dataset_42</code></div>
+        </aside>
+      </section>
+    </>
+  )
+}
+
+function ModelArchitecture() {
+  return <section className="panel model-architecture"><div className="architecture-title"><span className="panel-kicker">HOW IT WORKS</span><h2>병렬 분석과 합의 게이트</h2></div><div className="architecture-flow"><div><span className="arch-icon data"><Database size={19} /></span><strong>AIRIS Evidence</strong><small>승인된 가상 데이터 조회</small></div><ArrowRight /><div><span className="arch-icon openai"><Bot size={19} /></span><strong>OpenAI Analyst</strong><small>원인·행동 분석</small></div><div className="parallel-plus">+</div><div><span className="arch-icon gemini"><Sparkles size={19} /></span><strong>Gemini Challenger</strong><small>독립 검증·반례 탐색</small></div><ArrowRight /><div><span className="arch-icon gate"><GitCompareArrows size={19} /></span><strong>Consensus Gate</strong><small>합의·불일치·신뢰도</small></div><ArrowRight /><div><span className="arch-icon human"><ShieldCheck size={19} /></span><strong>Human Approval</strong><small>승인 후 AIQUA 초안</small></div></div></section>
+}
+
+function ModelRunning() {
+  return <section className="model-running-grid"><div className="panel running-card"><div className="model-brand openai"><Bot size={20} /></div><div><span>OpenAI Analyst</span><strong>구매·고객 행동 패턴 분석 중</strong><small>SQL evidence → hypothesis → next action</small></div><LoaderCircle className="spin" size={20} /></div><div className="panel running-card"><div className="model-brand gemini"><Sparkles size={20} /></div><div><span>Gemini Challenger</span><strong>데이터 품질과 반례 검증 중</strong><small>outlier → exclusion → risk check</small></div><LoaderCircle className="spin" size={20} /></div><div className="running-progress"><span /></div></section>
+}
+
+function ModelResult({ name, role, tone, confidence, finding, action }: { name: string; role: string; tone: 'openai' | 'gemini'; confidence: number; finding: string; action: string }) {
+  return <article className={`panel model-result ${tone}`}><div className="model-result-head"><div className={`model-brand ${tone}`}>{tone === 'openai' ? <Bot size={21} /> : <Sparkles size={21} />}</div><div><span>{role}</span><h2>{name}</h2></div><em>{confidence}% confidence</em></div><div className="model-section"><span>핵심 발견</span><p>{finding}</p></div><div className="model-section action"><span>권고 행동</span><p>{action}</p></div><div className="model-evidence"><Database size={13} /> AIRIS evidence 6개 인용 · PII 0건</div></article>
 }
 
 function StoreCapture({ memberScanned, selected, purchaseComplete, subtotal, points, onMember, onProduct, onComplete, onReset, onNavigate }: { memberScanned: boolean; selected: Product[]; purchaseComplete: boolean; subtotal: number; points: number; onMember: () => void; onProduct: (product: Product) => void; onComplete: () => void; onReset: () => void; onNavigate: (key: NavKey) => void }) {
